@@ -1,3 +1,4 @@
 # ProgramacionLLMs
-Paula Andrea Guarin Guarin
-paula.guaring@udea.edu.co
+Estudiante: Paula Andrea Guarin Guarin
+
+Correo: paula.guaring@udea.edu.co

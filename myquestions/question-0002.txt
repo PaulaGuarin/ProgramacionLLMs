@@ -1,0 +1,3 @@
+Detección de outliers con IQR en un DataFrame
+
+Escribe una función eliminar_outliers(df, columnas) que, dado un DataFrame y una lista de columnas numéricas, detecte y elimine filas cuyo valor esté fuera del rango intercuartílico (IQR × 1.5) en cualquiera de las columnas indicadas. Retorna el DataFrame limpio y un reporte con la cantidad de outliers eliminados por columna.

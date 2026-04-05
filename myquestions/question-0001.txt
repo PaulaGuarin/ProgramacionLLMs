@@ -1,0 +1,3 @@
+Limpieza y análisis de un dataset de ventas
+
+Dado un DataFrame con columnas fecha, producto, cantidad y precio_unitario, escribe una función analizar_ventas(df) que: elimine filas con valores nulos, convierta fecha a tipo datetime, calcule una columna ingreso_total, y retorne un DataFrame agrupado por mes y producto con el ingreso total y la cantidad promedio vendida.

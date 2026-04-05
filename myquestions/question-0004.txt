@@ -1,0 +1,3 @@
+Selección automática de hiperparámetros con GridSearchCV
+
+Escribe una función optimizar_modelo(X_train, y_train, X_test, y_test) que entrene un RandomForestClassifier optimizando n_estimators, max_depth y min_samples_split con GridSearchCV. La función debe retornar los mejores hiperparámetros encontrados, el accuracy en test, y la importancia de cada feature ordenada de mayor a menor.

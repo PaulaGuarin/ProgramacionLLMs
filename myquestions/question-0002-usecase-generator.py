@@ -7,7 +7,6 @@ def eliminar_outliers(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     df = df.copy()
-    # ✅ Acumular filas que son outlier en AL MENOS una columna
     mascara_outlier = pd.Series(False, index=df.index)
     reporte_filas = []
 
@@ -26,26 +25,26 @@ def eliminar_outliers(
         es_outlier = (df[col] < limite_inf) | (df[col] > limite_sup)
         n_outliers = int(es_outlier.sum())
 
-        # ✅ Unión: marcar la fila si es outlier en CUALQUIER columna
         mascara_outlier |= es_outlier
 
         reporte_filas.append({
-            "columna":            col,
-            "q1":                 round(q1, 4),
-            "q3":                 round(q3, 4),
-            "iqr":                round(iqr, 4),
-            "limite_inf":         round(limite_inf, 4),
-            "limite_sup":         round(limite_sup, 4),
+            "columna":             col,
+            "q1":                  round(q1, 4),
+            "q3":                  round(q3, 4),
+            "iqr":                 round(iqr, 4),
+            "limite_inf":          round(limite_inf, 4),
+            "limite_sup":          round(limite_sup, 4),
             "outliers_eliminados": n_outliers,
         })
 
-    # ✅ Conservar solo las filas que NO son outlier en ninguna columna
     df_limpio = df[~mascara_outlier].reset_index(drop=True)
     reporte   = pd.DataFrame(reporte_filas).set_index("columna")
 
     return df_limpio, reporte
 
-    np.random.seed(42)
+
+# ── Ejemplo de uso ──────────────────────────────────────────────────────────
+np.random.seed(42)
 
 df = pd.DataFrame({
     "edad":    np.concatenate([np.random.normal(35, 5, 97), [120, -10, 200]]),
@@ -58,6 +57,4 @@ df_limpio, reporte = eliminar_outliers(df, columnas=["edad", "salario"])
 print(f"Filas originales : {len(df)}")
 print(f"Filas conservadas: {len(df_limpio)}")
 print()
-print(reporte)as).set_index("columna")
-
-    return df_limpio, reporte
+print(reporte)

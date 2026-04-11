@@ -1,98 +1,79 @@
-import numpy as np
 import pandas as pd
+import numpy as np
+import random
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.datasets import make_classification
 
-
-def optimizar_modelo(
-    X_train: np.ndarray,
-    y_train: np.ndarray,
-    X_test:  np.ndarray,
-    y_test:  np.ndarray,
-) -> dict:
+def generar_caso_de_uso_optimizar_modelo():
     """
-    Optimiza un RandomForestClassifier con GridSearchCV.
-
-    Parámetros
-    ----------
-    X_train, y_train : datos de entrenamiento.
-    X_test,  y_test  : datos de evaluación final.
-
-    Retorna
-    -------
-    dict con:
-        - mejores_params   : hiperparámetros óptimos encontrados
-        - accuracy_test    : accuracy sobre el conjunto de test
-        - importancia      : DataFrame con features ordenadas por importancia
+    Genera un caso de prueba aleatorio para
+    optimizar_modelo(X_train, y_train, X_test, y_test).
+    Input : {'X_train', 'y_train', 'X_test', 'y_test'}
+    Output: dict con mejores_params, accuracy_test e importancia
     """
+    n_samples  = random.randint(100, 300)
+    n_features = random.randint(4, 10)
 
-    # 1. Definir la cuadrícula de hiperparámetros
-    param_grid = {
-        "n_estimators":      [50, 100, 200],
-        "max_depth":         [None, 5, 10, 20],
-        "min_samples_split": [2, 5, 10],
+    X, y = make_classification(
+        n_samples=n_samples,
+        n_features=n_features,
+        n_informative=max(2, n_features - 2),
+        n_redundant=2,
+        random_state=random.randint(0, 999),
+    )
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+
+    input_data = {
+        'X_train': X_train,
+        'y_train': y_train,
+        'X_test':  X_test,
+        'y_test':  y_test,
     }
 
-    # 2. Modelo base
+    # ── Ground truth ──
+    param_grid = {
+        'n_estimators':      [50, 100, 200],
+        'max_depth':         [None, 5, 10, 20],
+        'min_samples_split': [2, 5, 10],
+    }
     rf = RandomForestClassifier(random_state=42)
+    gs = GridSearchCV(rf, param_grid, scoring='accuracy', cv=5, n_jobs=-1, refit=True)
+    gs.fit(X_train, y_train)
 
-    # 3. GridSearchCV con validación cruzada estratificada de 5 folds
-    grid_search = GridSearchCV(
-        estimator=rf,
-        param_grid=param_grid,
-        scoring="accuracy",
-        cv=5,
-        n_jobs=-1,          # usa todos los núcleos disponibles
-        verbose=1,
-        refit=True,         # re-entrena con los mejores params sobre todo X_train
-    )
-    grid_search.fit(X_train, y_train)
-
-    # 4. Evaluar el mejor modelo sobre test
-    mejor_modelo = grid_search.best_estimator_
+    mejor_modelo = gs.best_estimator_
     y_pred       = mejor_modelo.predict(X_test)
     acc_test     = round(accuracy_score(y_test, y_pred), 4)
-
-    # 5. Importancia de features ordenada de mayor a menor
     importancias = mejor_modelo.feature_importances_
-
-    # Nombres de columnas si X_train es DataFrame, índices si es array
-    if isinstance(X_train, pd.DataFrame):
-        nombres = X_train.columns.tolist()
-    else:
-        nombres = [f"feature_{i}" for i in range(X_train.shape[1])]
-
-    idx_ordenado = np.argsort(importancias)[::-1]   # orden descendente
+    idx_ord      = np.argsort(importancias)[::-1]
 
     df_importancia = pd.DataFrame({
-        "feature":    [nombres[i] for i in idx_ordenado],
-        "importancia": importancias[idx_ordenado].round(4),
+        'feature':    [f'feature_{i}' for i in idx_ord],
+        'importancia': importancias[idx_ord].round(4),
     })
 
-    return {
-        "mejores_params": grid_search.best_params_,
-        "accuracy_test":  acc_test,
-        "importancia":    df_importancia,
+    output_data = {
+        'mejores_params': gs.best_params_,
+        'accuracy_test':  acc_test,
+        'importancia':    df_importancia,
     }
 
+    return input_data, output_data
 
-# ── Ejemplo de uso ───────────────────────────────────────────────────────────
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
 
-X, y = load_iris(return_X_y=True, as_frame=True)  # as_frame=True → DataFrame
+if __name__ == '__main__':
+    entrada, salida_esperada = generar_caso_de_uso_optimizar_modelo()
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
+    print("=== INPUT ===")
+    print(f"X_train shape: {entrada['X_train'].shape}")
+    print(f"X_test shape:  {entrada['X_test'].shape}")
 
-resultado = optimizar_modelo(X_train, y_train, X_test, y_test)
-
-print("Mejores hiperparámetros:")
-for k, v in resultado["mejores_params"].items():
-    print(f"  {k}: {v}")
-
-print(f"\nAccuracy en test: {resultado['accuracy_test']}")
-print("\nImportancia de features:")
-print(resultado["importancia"].to_string(index=False))
+    print("\n=== OUTPUT ESPERADO ===")
+    print(f"Mejores parámetros: {salida_esperada['mejores_params']}")
+    print(f"Accuracy en test:   {salida_esperada['accuracy_test']}")
+    print("\nImportancia de features:")
+    print(salida_esperada['importancia'])

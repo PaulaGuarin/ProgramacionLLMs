@@ -1,363 +1,184 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "id": "f1a10632-acb5-4749-a781-0d4248d1c587",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Requirement already satisfied: pandas in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (3.0.3)\n",
-      "Requirement already satisfied: numpy in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (2.4.6)\n",
-      "Requirement already satisfied: scikit-learn in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (1.8.0)\n",
-      "Requirement already satisfied: python-dateutil>=2.8.2 in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (from pandas) (2.9.0.post0)\n",
-      "Requirement already satisfied: tzdata in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (from pandas) (2026.2)\n",
-      "Requirement already satisfied: scipy>=1.10.0 in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (from scikit-learn) (1.17.1)\n",
-      "Requirement already satisfied: joblib>=1.3.0 in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (from scikit-learn) (1.5.3)\n",
-      "Requirement already satisfied: threadpoolctl>=3.2.0 in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (from scikit-learn) (3.6.0)\n",
-      "Requirement already satisfied: six>=1.5 in .\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages (from python-dateutil>=2.8.2->pandas) (1.17.0)\n",
-      "── Validando solución correcta ──\n",
-      "\n",
-      "============================================================\n",
-      "  RESULTADOS: 20/20 trials correctos\n",
-      "============================================================\n",
-      "  ✓ Trial 01 | 50 filas | cols=[categoria, segmento, ciudad] | OK\n",
-      "  ✓ Trial 02 | 48 filas | cols=[categoria, segmento, canal] [cat_rara] | OK\n",
-      "  ✓ Trial 03 | 58 filas | cols=[canal, ciudad, categoria] [cat_rara] | OK\n",
-      "  ✓ Trial 04 | 35 filas | cols=[ciudad, canal] | OK\n",
-      "  ✓ Trial 05 | 37 filas | cols=[categoria] | OK\n",
-      "  ✓ Trial 06 | 33 filas | cols=[segmento, categoria, region] | OK\n",
-      "  ✓ Trial 07 | 45 filas | cols=[region] [cat_rara] | OK\n",
-      "  ✓ Trial 08 | 28 filas | cols=[canal, region] [cat_rara] | OK\n",
-      "  ✓ Trial 09 | 39 filas | cols=[ciudad, region] [cat_rara] | OK\n",
-      "  ✓ Trial 10 | 43 filas | cols=[canal, categoria] [cat_rara] | OK\n",
-      "  ✓ Trial 11 | 46 filas | cols=[ciudad, region] | OK\n",
-      "  ✓ Trial 12 | 25 filas | cols=[categoria, ciudad, region] | OK\n",
-      "  ✓ Trial 13 | 29 filas | cols=[canal] | OK\n",
-      "  ✓ Trial 14 | 50 filas | cols=[region] | OK\n",
-      "  ✓ Trial 15 | 36 filas | cols=[region] | OK\n",
-      "  ✓ Trial 16 | 55 filas | cols=[segmento] [cat_rara] | OK\n",
-      "  ✓ Trial 17 | 56 filas | cols=[ciudad, region, canal] | OK\n",
-      "  ✓ Trial 18 | 39 filas | cols=[categoria, canal] [cat_rara] | OK\n",
-      "  ✓ Trial 19 | 48 filas | cols=[segmento] | OK\n",
-      "  ✓ Trial 20 | 33 filas | cols=[ciudad] | OK\n",
-      "============================================================\n",
-      "\n",
-      "=== INPUT ===\n",
-      "cat_cols   : ['ciudad', 'segmento']\n",
-      "target_col : 'target'\n",
-      "Shape      : (45, 4)\n",
-      "      ciudad  segmento  ingreso  target\n",
-      "0     Bogota   Premium   -0.639       1\n",
-      "1   Medellin    Basico    1.611       0\n",
-      "2       Cali    Basico   -0.505       1\n",
-      "3  Cartagena  Estandar    1.570       1\n",
-      "4     Bogota    Basico    1.908       1\n",
-      "5     Bogota   Premium   -1.044       0\n",
-      "6     Bogota     Trial   -2.544       1\n",
-      "7     Bogota     Trial    0.685       1\n",
-      "\n",
-      "=== OUTPUT ESPERADO ===\n",
-      "     ciudad  segmento  ingreso  target\n",
-      "0  0.500000  0.857143   -0.639       1\n",
-      "1  0.833333  0.500000    1.611       0\n",
-      "2  0.600000  0.500000   -0.505       1\n",
-      "3  0.750000  0.583333    1.570       1\n",
-      "4  0.500000  0.500000    1.908       1\n",
-      "5  0.500000  0.857143   -1.044       0\n",
-      "6  0.500000  0.733333   -2.544       1\n",
-      "7  0.500000  0.733333    0.685       1\n",
-      "\n",
-      "Dtypes columnas codificadas:\n",
-      "ciudad      float64\n",
-      "segmento    float64\n",
-      "dtype: object\n"
-     ]
-    }
-   ],
-   "source": [
-    "!pip install pandas numpy scikit-learn\n",
-    "\n",
-    "import pandas as pd\n",
-    "import numpy as np\n",
-    "from sklearn.model_selection import KFold\n",
-    "import random\n",
-    "\n",
-    "\n",
-    "# ── Implementación de referencia (ground truth) ───────────────────────────────\n",
-    "\n",
-    "def _reference_aplicar_target_encoding(df, cat_cols, target_col):\n",
-    "    n_rows = len(df)\n",
-    "    df_out = df.copy()\n",
-    "    kf = KFold(n_splits=5, shuffle=False)\n",
-    "    global_mean = df[target_col].mean()\n",
-    "    for col in cat_cols:\n",
-    "        encoded = np.zeros(n_rows, dtype=float)\n",
-    "        for train_idx, val_idx in kf.split(df):\n",
-    "            train_df = df.iloc[train_idx]\n",
-    "            means = train_df.groupby(col)[target_col].mean()\n",
-    "            for i in val_idx:\n",
-    "                cat = df.iloc[i][col]\n",
-    "                encoded[i] = means.get(cat, global_mean)\n",
-    "        df_out[col] = encoded\n",
-    "    return df_out\n",
-    "\n",
-    "\n",
-    "# ── Generador principal ───────────────────────────────────────────────────────\n",
-    "\n",
-    "def generar_caso_de_uso_aplicar_target_encoding():\n",
-    "    \"\"\"\n",
-    "    Genera un caso de uso aleatorio para la función aplicar_target_encoding.\n",
-    "\n",
-    "    Estrategia de variación aleatoria:\n",
-    "    - Número de filas: entre 25 y 60 (mínimo 25 garantiza 5 filas por fold).\n",
-    "    - Columnas categóricas: entre 1 y 3 columnas, elegidas de un pool variado.\n",
-    "    - Número de categorías por columna: varía por columna para simular\n",
-    "      cardinalidades distintas (baja, media, alta).\n",
-    "    - Columnas numéricas extra: entre 0 y 2, para verificar que no se tocan.\n",
-    "    - Caso edge «categoría rara»: con probabilidad 0.3 se inyecta una categoría\n",
-    "      que solo aparece en el último fold de validación, forzando el fallback\n",
-    "      a la media global.\n",
-    "    - Target: siempre binario (0/1), con proporción de positivos aleatoria\n",
-    "      entre 20% y 80% para evitar clases perfectamente balanceadas/desbalanceadas.\n",
-    "\n",
-    "    Retorna\n",
-    "    -------\n",
-    "    input_dict : dict con claves 'df', 'cat_cols', 'target_col'\n",
-    "    df_out     : pd.DataFrame con las columnas cat_cols codificadas (ground truth)\n",
-    "    \"\"\"\n",
-    "\n",
-    "    # ── 1. Parámetros estructurales del caso ──────────────────────────────────\n",
-    "    n_rows = random.randint(25, 60)\n",
-    "    positive_rate = random.uniform(0.2, 0.8)\n",
-    "\n",
-    "    # Pool de columnas categóricas disponibles, cada una con su pool de valores\n",
-    "    pool_categoricas = {\n",
-    "        'ciudad': ['Bogota', 'Medellin', 'Cali', 'Barranquilla', 'Cartagena',\n",
-    "                   'Bucaramanga', 'Pereira', 'Manizales'],\n",
-    "        'categoria': ['A', 'B', 'C', 'D', 'E'],\n",
-    "        'region': ['Norte', 'Sur', 'Oriente', 'Occidente', 'Centro'],\n",
-    "        'canal': ['Online', 'Tienda', 'Telefono', 'App'],\n",
-    "        'segmento': ['Premium', 'Estandar', 'Basico', 'Trial'],\n",
-    "    }\n",
-    "\n",
-    "    # Seleccionar entre 1 y 3 columnas categóricas del pool\n",
-    "    n_cat_cols = random.randint(1, 3)\n",
-    "    cat_col_names = random.sample(list(pool_categoricas.keys()), n_cat_cols)\n",
-    "\n",
-    "    # ── 2. Construir datos por columna ────────────────────────────────────────\n",
-    "    data = {}\n",
-    "\n",
-    "    for col_name in cat_col_names:\n",
-    "        valores_disponibles = pool_categoricas[col_name]\n",
-    "        # Cardinalidad aleatoria: entre 2 y min(4, disponibles)\n",
-    "        k = random.randint(2, min(4, len(valores_disponibles)))\n",
-    "        valores_usados = random.sample(valores_disponibles, k)\n",
-    "        data[col_name] = np.random.choice(valores_usados, n_rows)\n",
-    "\n",
-    "    # Columnas numéricas extra (0 a 2) para verificar que no se modifican\n",
-    "    n_num_extra = random.randint(0, 2)\n",
-    "    num_col_names = random.sample(['ingreso', 'edad', 'score', 'cantidad', 'dias'],\n",
-    "                                  n_num_extra)\n",
-    "    for col_name in num_col_names:\n",
-    "        data[col_name] = np.round(np.random.randn(n_rows), 3)\n",
-    "\n",
-    "    # Target binario con proporción aleatoria de positivos\n",
-    "    data['target'] = (np.random.rand(n_rows) < positive_rate).astype(int)\n",
-    "\n",
-    "    df = pd.DataFrame(data)\n",
-    "\n",
-    "    # ── 3. Caso edge: categoría rara en el último fold ────────────────────────\n",
-    "    # Con probabilidad 0.3, sobreescribimos algunas filas del último fold\n",
-    "    # de la primera columna categórica con una categoría que NO existe en\n",
-    "    # los primeros 4 folds, forzando el fallback a la media global.\n",
-    "    inject_rare = random.random() < 0.3\n",
-    "    if inject_rare and len(cat_col_names) > 0:\n",
-    "        kf_tmp = KFold(n_splits=5, shuffle=False)\n",
-    "        folds = list(kf_tmp.split(df))\n",
-    "        _, last_val_idx = folds[-1]           # índices del último fold de validación\n",
-    "        rare_col = cat_col_names[0]\n",
-    "        # Valor raro: algo que no está en ningún fold de entrenamiento del fold 5\n",
-    "        _, last_train_idx = folds[-1]\n",
-    "        rare_val = '__RARO__'\n",
-    "        # Inyectar en la primera fila del último fold de validación\n",
-    "        df.iloc[last_val_idx[0], df.columns.get_loc(rare_col)] = rare_val\n",
-    "\n",
-    "    # ── 4. Preparar input y calcular output esperado ──────────────────────────\n",
-    "    target_col = 'target'\n",
-    "    input_dict = {\n",
-    "        'df': df.copy(),\n",
-    "        'cat_cols': cat_col_names,\n",
-    "        'target_col': target_col,\n",
-    "    }\n",
-    "    df_out = _reference_aplicar_target_encoding(df, cat_col_names, target_col)\n",
-    "\n",
-    "    return input_dict, df_out\n",
-    "\n",
-    "\n",
-    "# ── Suite de validación ───────────────────────────────────────────────────────\n",
-    "\n",
-    "def validar_solucion(func, n_trials=20, seed=None):\n",
-    "    \"\"\"\n",
-    "    Ejecuta n_trials casos aleatorios contra la función proporcionada\n",
-    "    y reporta PASS/FAIL con detalles de cada caso.\n",
-    "\n",
-    "    Parámetros\n",
-    "    ----------\n",
-    "    func     : callable — la función del estudiante a evaluar.\n",
-    "    n_trials : int — número de casos a generar.\n",
-    "    seed     : int o None — semilla para reproducibilidad.\n",
-    "    \"\"\"\n",
-    "    if seed is not None:\n",
-    "        random.seed(seed)\n",
-    "        np.random.seed(seed)\n",
-    "\n",
-    "    resultados = []\n",
-    "    for i in range(n_trials):\n",
-    "        entrada, esperado = generar_caso_de_uso_aplicar_target_encoding()\n",
-    "        df_in   = entrada['df']\n",
-    "        cat_cols   = entrada['cat_cols']\n",
-    "        target_col = entrada['target_col']\n",
-    "\n",
-    "        try:\n",
-    "            resultado = func(df_in.copy(), cat_cols, target_col)\n",
-    "\n",
-    "            # ── Verificaciones ────────────────────────────────────────────────\n",
-    "            errores = []\n",
-    "\n",
-    "            # 1. Shape idéntico\n",
-    "            if resultado.shape != esperado.shape:\n",
-    "                errores.append(f\"shape {resultado.shape} != {esperado.shape}\")\n",
-    "\n",
-    "            # 2. Columnas cat_cols son float\n",
-    "            for col in cat_cols:\n",
-    "                if not pd.api.types.is_float_dtype(resultado[col]):\n",
-    "                    errores.append(f\"'{col}' no es float (es {resultado[col].dtype})\")\n",
-    "\n",
-    "            # 3. Valores numéricos correctos (tolerancia 1e-9)\n",
-    "            if not errores:\n",
-    "                if not np.allclose(resultado[cat_cols].values,\n",
-    "                                   esperado[cat_cols].values, atol=1e-9):\n",
-    "                    diff = np.abs(resultado[cat_cols].values - esperado[cat_cols].values)\n",
-    "                    errores.append(f\"valores incorrectos — diff max={diff.max():.2e}\")\n",
-    "\n",
-    "            # 4. Columnas no-cat sin modificar\n",
-    "            otras = [c for c in df_in.columns if c not in cat_cols]\n",
-    "            for col in otras:\n",
-    "                if not resultado[col].equals(esperado[col]):\n",
-    "                    errores.append(f\"columna '{col}' fue modificada\")\n",
-    "\n",
-    "            # 5. Índice intacto\n",
-    "            if not resultado.index.equals(esperado.index):\n",
-    "                errores.append(\"el índice fue modificado\")\n",
-    "\n",
-    "            passed = len(errores) == 0\n",
-    "            nota = \"; \".join(errores) if errores else \"OK\"\n",
-    "\n",
-    "        except Exception as exc:\n",
-    "            passed = False\n",
-    "            nota = f\"EXCEPCIÓN: {exc}\"\n",
-    "\n",
-    "        # Detectar si el caso tenía categoría rara\n",
-    "        tiene_rara = any('__RARO__' in df_in[c].astype(str).values\n",
-    "                         for c in cat_cols)\n",
-    "\n",
-    "        resultados.append({\n",
-    "            'trial': i + 1,\n",
-    "            'n_rows': len(df_in),\n",
-    "            'cat_cols': cat_cols,\n",
-    "            'tiene_rara': tiene_rara,\n",
-    "            'passed': passed,\n",
-    "            'nota': nota,\n",
-    "        })\n",
-    "\n",
-    "    # ── Reporte ───────────────────────────────────────────────────────────────\n",
-    "    total  = len(resultados)\n",
-    "    passed = sum(r['passed'] for r in resultados)\n",
-    "    print(f\"\\n{'='*60}\")\n",
-    "    print(f\"  RESULTADOS: {passed}/{total} trials correctos\")\n",
-    "    print(f\"{'='*60}\")\n",
-    "    for r in resultados:\n",
-    "        icono = \"✓\" if r['passed'] else \"✗\"\n",
-    "        rara  = \" [cat_rara]\" if r['tiene_rara'] else \"\"\n",
-    "        cols  = \", \".join(r['cat_cols'])\n",
-    "        print(f\"  {icono} Trial {r['trial']:02d} | {r['n_rows']} filas | \"\n",
-    "              f\"cols=[{cols}]{rara} | {r['nota']}\")\n",
-    "    print(f\"{'='*60}\\n\")\n",
-    "    return passed == total\n",
-    "\n",
-    "\n",
-    "# ── Demo ──────────────────────────────────────────────────────────────────────\n",
-    "\n",
-    "if __name__ == \"__main__\":\n",
-    "\n",
-    "    # Importar la solución de referencia como si fuera la del estudiante\n",
-    "    def aplicar_target_encoding(df, cat_cols, target_col):\n",
-    "        n_rows = len(df)\n",
-    "        df_out = df.copy()\n",
-    "        kf = KFold(n_splits=5, shuffle=False)\n",
-    "        global_mean = df[target_col].mean()\n",
-    "        for col in cat_cols:\n",
-    "            encoded = np.zeros(n_rows, dtype=float)\n",
-    "            for train_idx, val_idx in kf.split(df):\n",
-    "                train_df = df.iloc[train_idx]\n",
-    "                means = train_df.groupby(col)[target_col].mean()\n",
-    "                for i in val_idx:\n",
-    "                    cat = df.iloc[i][col]\n",
-    "                    encoded[i] = means.get(cat, global_mean)\n",
-    "            df_out[col] = encoded\n",
-    "        return df_out\n",
-    "\n",
-    "    print(\"── Validando solución correcta ──\")\n",
-    "    validar_solucion(aplicar_target_encoding, n_trials=20, seed=99)\n",
-    "\n",
-    "    # Demo visual de un caso generado\n",
-    "    random.seed(7); np.random.seed(7)\n",
-    "    entrada, salida = generar_caso_de_uso_aplicar_target_encoding()\n",
-    "    print(\"=== INPUT ===\")\n",
-    "    print(f\"cat_cols   : {entrada['cat_cols']}\")\n",
-    "    print(f\"target_col : '{entrada['target_col']}'\")\n",
-    "    print(f\"Shape      : {entrada['df'].shape}\")\n",
-    "    print(entrada['df'].head(8).to_string())\n",
-    "    print(\"\\n=== OUTPUT ESPERADO ===\")\n",
-    "    print(salida.head(8).to_string())\n",
-    "    print(f\"\\nDtypes columnas codificadas:\")\n",
-    "    print(salida[entrada['cat_cols']].dtypes)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "060cc490-4c42-4a7f-b153-5fa1c4af4cf7",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "*+nbbi9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9i9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9ibn9"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.14.5"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+import pandas as pd
+import numpy as np
+import random
+
+
+# ── Implementación de referencia (ground truth) ───────────────────────────────
+
+def _reference_calcular_estadisticas(df):
+    medias = df.mean().to_numpy()
+    desviaciones = df.std().to_numpy()
+    return medias, desviaciones
+
+
+# ── Generador principal ───────────────────────────────────────────────────────
+
+def generar_caso_de_uso_calcular_estadisticas():
+    """
+    Genera un caso de uso aleatorio para calcular_estadisticas.
+
+    Variaciones cubiertas:
+    - n_rows      : 10 – 200 filas.
+    - n_cols      : 2 – 8 columnas numéricas.
+    - nombres     : subconjunto aleatorio del pool para evitar nombres fijos.
+    - distribución: cada columna tiene media y escala distintas (no centradas
+                    en 0) para que las medias y stds varíen entre columnas.
+    - dtypes       : mezcla aleatoria de float64 e int64 (ambos son numéricos).
+    - Caso edge columna constante: con prob. 0.2 una columna tiene todos los
+                    valores iguales → std = 0 (prueba que no hay división por 0).
+
+    Retorna
+    -------
+    input_dict : dict con clave 'df'
+    (medias, desviaciones) : tupla de numpy arrays (ground truth)
+    """
+
+    # ── 1. Parámetros estructurales ───────────────────────────────────────────
+    n_rows = random.randint(10, 200)
+    n_cols = random.randint(2, 8)
+
+    pool_nombres = [
+        'edad', 'ingreso', 'score', 'deuda', 'saldo', 'monto',
+        'frecuencia', 'dias', 'cantidad', 'ratio', 'altura', 'peso',
+    ]
+    col_names = random.sample(pool_nombres, n_cols)
+
+    # ── 2. Generar datos con medias y escalas variadas ────────────────────────
+    data = {}
+    for col in col_names:
+        media_real = random.uniform(-100, 500)
+        escala     = random.uniform(0.5, 50)
+        usar_int   = random.random() < 0.3     # 30% de columnas como int
+
+        valores = np.random.randn(n_rows) * escala + media_real
+        if usar_int:
+            valores = valores.astype(int).astype(float)  # int → float para consistencia
+        data[col] = np.round(valores, 4)
+
+    df = pd.DataFrame(data)
+
+    # ── 3. Caso edge: columna constante (std = 0) ─────────────────────────────
+    if random.random() < 0.2:
+        col_constante = random.choice(col_names)
+        valor_fijo = round(random.uniform(-50, 200), 2)
+        df[col_constante] = valor_fijo
+
+    # ── 4. Calcular ground truth ──────────────────────────────────────────────
+    input_dict = {'df': df.copy()}
+    medias, desviaciones = _reference_calcular_estadisticas(df.copy())
+
+    return input_dict, (medias, desviaciones)
+
+
+# ── Suite de validación ───────────────────────────────────────────────────────
+
+def validar_solucion(func, n_trials=20, seed=None):
+    """
+    Ejecuta n_trials casos aleatorios contra la función del estudiante.
+
+    Verificaciones por trial:
+    1. Retorna una tupla de longitud 2.
+    2. Ambos elementos son numpy.ndarray.
+    3. Ambos arrays tienen shape (n_cols,).
+    4. Los valores de medias coinciden con el ground truth (atol=1e-9).
+    5. Los valores de desviaciones coinciden con el ground truth (atol=1e-9).
+    """
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+
+    resultados = []
+    for i in range(n_trials):
+        entrada, (medias_esp, stds_esp) = generar_caso_de_uso_calcular_estadisticas()
+        df_in  = entrada['df']
+        n_cols = df_in.shape[1]
+        tiene_constante = any(df_in[c].nunique() == 1 for c in df_in.columns)
+
+        try:
+            resultado = func(df_in.copy())
+            errores = []
+
+            # 1. Tupla de 2 elementos
+            if not (isinstance(resultado, tuple) and len(resultado) == 2):
+                errores.append(f"debe retornar tupla de 2, recibió {type(resultado)}")
+            else:
+                medias_res, stds_res = resultado
+
+                # 2. Tipos numpy
+                if not isinstance(medias_res, np.ndarray):
+                    errores.append(f"medias debe ser ndarray, es {type(medias_res)}")
+                if not isinstance(stds_res, np.ndarray):
+                    errores.append(f"desviaciones debe ser ndarray, es {type(stds_res)}")
+
+                if isinstance(medias_res, np.ndarray) and isinstance(stds_res, np.ndarray):
+
+                    # 3. Shapes
+                    if medias_res.shape != (n_cols,):
+                        errores.append(f"medias.shape={medias_res.shape}, esperado ({n_cols},)")
+                    if stds_res.shape != (n_cols,):
+                        errores.append(f"desviaciones.shape={stds_res.shape}, esperado ({n_cols},)")
+
+                    # 4 & 5. Valores correctos
+                    if not errores:
+                        if not np.allclose(medias_res, medias_esp, atol=1e-9):
+                            diff = np.abs(medias_res - medias_esp).max()
+                            errores.append(f"medias incorrectas (diff max={diff:.2e})")
+                        if not np.allclose(stds_res, stds_esp, atol=1e-9):
+                            diff = np.abs(stds_res - stds_esp).max()
+                            errores.append(f"desviaciones incorrectas (diff max={diff:.2e})")
+
+            passed = len(errores) == 0
+            nota   = "; ".join(errores) if errores else "OK"
+
+        except Exception as exc:
+            passed = False
+            nota   = f"EXCEPCIÓN: {exc}"
+
+        resultados.append({
+            'trial':     i + 1,
+            'n_rows':    df_in.shape[0],
+            'n_cols':    n_cols,
+            'constante': tiene_constante,
+            'passed':    passed,
+            'nota':      nota,
+        })
+
+    # ── Reporte ───────────────────────────────────────────────────────────────
+    total  = len(resultados)
+    passed = sum(r['passed'] for r in resultados)
+    print(f"\n{'='*60}")
+    print(f"  RESULTADOS: {passed}/{total} trials correctos")
+    print(f"{'='*60}")
+    for r in resultados:
+        icono     = "✓" if r['passed'] else "✗"
+        constante = " [col_cte]" if r['constante'] else ""
+        print(
+            f"  {icono} Trial {r['trial']:02d} | {r['n_rows']:3d} filas | "
+            f"{r['n_cols']} cols{constante} | {r['nota']}"
+        )
+    print(f"{'='*60}\n")
+    return passed == total
+
+
+# ── Demo ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    print("── Validando implementación de referencia ──")
+    validar_solucion(_reference_calcular_estadisticas, n_trials=20, seed=7)
+
+    # Demo visual
+    random.seed(1); np.random.seed(1)
+    entrada, (medias, stds) = generar_caso_de_uso_calcular_estadisticas()
+    df_in = entrada['df']
+
+    print("=== INPUT ===")
+    print(f"Shape   : {df_in.shape}")
+    print(f"Columnas: {list(df_in.columns)}")
+    print(df_in.head(6).to_string())
+
+    print("\n=== OUTPUT ESPERADO ===")
+    print(f"medias       (shape {medias.shape}): {np.round(medias, 4)}")
+    print(f"desviaciones (shape {stds.shape}): {np.round(stds, 4)}")
+    print(f"\nDetalle por columna:")
+    for col, m, s in zip(df_in.columns, medias, stds):
+        print(f"  {col:<15} media={m:+10.4f}   std={s:.4f}")

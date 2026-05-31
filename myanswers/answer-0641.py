@@ -4,25 +4,7 @@ from sklearn.model_selection import KFold
 import random
 
 
-def generar_caso_de_uso_aplicar_target_encoding():
-    """
-    Genera un caso de uso aleatorio para aplicar_target_encoding.
-
-    Variaciones cubiertas:
-    - n_rows       : 25 – 60 filas.
-    - cat_cols     : 1 – 3 columnas categóricas de un pool variado.
-    - cardinalidad : 2 – 4 valores únicos por columna.
-    - cols extra   : 0 – 2 columnas numéricas que no deben modificarse.
-    - target_col   : siempre 'target', proporción de positivos 20 %–80 %.
-    - Caso edge    : 30 % de prob. de inyectar una categoría '__RARO__' que
-                     solo aparece en el último fold → fuerza fallback a media global.
-
-    Retorna
-    -------
-    input_dict : dict con claves 'df', 'cat_cols', 'target_col'
-    df_out     : pd.DataFrame con las columnas cat_cols codificadas (ground truth)
-    """
-
+def generar_caso_de_uso_aplicar_target_encoding(**kwargs):
     n_rows = random.randint(25, 60)
     positive_rate = random.uniform(0.2, 0.8)
 
@@ -52,7 +34,7 @@ def generar_caso_de_uso_aplicar_target_encoding():
     data['target'] = (np.random.rand(n_rows) < positive_rate).astype(int)
     df = pd.DataFrame(data)
 
-    # Caso edge: categoría rara en el último fold
+    # Caso edge: categoría rara en el último fold (30% prob)
     if random.random() < 0.3:
         kf_tmp = KFold(n_splits=5, shuffle=False)
         folds = list(kf_tmp.split(df))

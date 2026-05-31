@@ -5,36 +5,18 @@ from sklearn.impute import SimpleImputer
 import random
 
 
-def generar_caso_de_uso_preparar_deteccion_fraude():
-    """
-    Genera un caso de uso aleatorio para preparar_deteccion_fraude.
-
-    Variaciones cubiertas:
-    - n_rows           : 20 – 80 filas.
-    - tipos_comercio   : 3 – 6 categorías del pool.
-    - NaN en 'monto'   : 1 – 15 % de filas.
-    - Montos           : distribución log-normal (cola larga realista).
-    - monto_max_normal : percentil p30–p75 de los montos → proporción sospechosos variable.
-    - Caso edge        : 25 % de prob. de un monto extremo (10× la media).
-
-    Retorna
-    -------
-    input_dict   : dict con claves 'df_transacciones' y 'monto_max_normal'
-    (X_esp, y_esp) : tupla de numpy arrays (ground truth)
-    """
-
+def generar_caso_de_uso_preparar_deteccion_fraude(**kwargs):
     n_rows = random.randint(20, 80)
 
     pool_tipos = ['Retail', 'Food', 'Tech', 'Travel', 'Entertainment',
                   'Health', 'Education', 'Finance']
     tipos_usados = random.sample(pool_tipos, random.randint(3, 6))
 
-    # Montos log-normales
     media_log = random.uniform(3.5, 6.0)
     sigma_log  = random.uniform(0.4, 1.0)
     montos_raw = np.round(np.random.lognormal(mean=media_log, sigma=sigma_log, size=n_rows), 2)
 
-    # Caso edge: monto extremo
+    # Caso edge: monto extremo (25% prob)
     if random.random() < 0.25:
         montos_raw[random.randint(0, n_rows - 1)] = round(montos_raw.mean() * 10, 2)
 
@@ -44,7 +26,6 @@ def generar_caso_de_uso_preparar_deteccion_fraude():
     montos_con_nan = montos_raw.astype(float).copy()
     montos_con_nan[nan_idx] = np.nan
 
-    # monto_max_normal desde percentil aleatorio
     percentil = random.uniform(30, 75)
     monto_max_normal = round(float(np.percentile(montos_raw, percentil)), 2)
 

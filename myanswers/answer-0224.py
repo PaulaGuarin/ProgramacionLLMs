@@ -1,351 +1,184 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "id": "c8370ea5-199c-4d2c-8392-0ae878633b1b",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "── Validando implementación de referencia ──\n",
-      "\n",
-      "=================================================================\n",
-      "  RESULTADOS: 20/20 trials correctos\n",
-      "=================================================================\n",
-      "  ✓ Trial 01 | 60 filas | 8 NaN | 3 tipos | max_normal=57.2 | OK\n",
-      "  ✓ Trial 02 | 21 filas | 1 NaN | 4 tipos | max_normal=50.7 | OK\n",
-      "  ✓ Trial 03 | 29 filas | 3 NaN | 4 tipos | max_normal=36.9 | OK\n",
-      "  ✓ Trial 04 | 79 filas | 9 NaN | 6 tipos | max_normal=55.5 | OK\n",
-      "  ✓ Trial 05 | 62 filas | 6 NaN | 5 tipos | max_normal=67.2 | OK\n",
-      "  ✓ Trial 06 | 34 filas | 3 NaN | 3 tipos | max_normal=47.7 | OK\n",
-      "  ✓ Trial 07 | 61 filas | 2 NaN | 6 tipos | max_normal=141.4 | OK\n",
-      "  ✓ Trial 08 | 68 filas | 4 NaN | 3 tipos | max_normal=72.6 | OK\n",
-      "  ✓ Trial 09 | 27 filas | 1 NaN | 5 tipos | max_normal=179.5 | OK\n",
-      "  ✓ Trial 10 | 52 filas | 1 NaN | 3 tipos | max_normal=181.9 | OK\n",
-      "  ✓ Trial 11 | 78 filas | 9 NaN | 3 tipos | max_normal=60.8 | OK\n",
-      "  ✓ Trial 12 | 28 filas | 3 NaN | 6 tipos | max_normal=297.9 | OK\n",
-      "  ✓ Trial 13 | 77 filas | 8 NaN | 6 tipos | max_normal=137.1 | OK\n",
-      "  ✓ Trial 14 | 51 filas | 1 NaN | 4 tipos | max_normal=151.4 | OK\n",
-      "  ✓ Trial 15 | 42 filas | 1 NaN | 6 tipos | max_normal=100.7 | OK\n",
-      "  ✓ Trial 16 | 28 filas | 4 NaN | 6 tipos | max_normal=595.8 | OK\n",
-      "  ✓ Trial 17 | 30 filas | 3 NaN | 6 tipos | max_normal=133.7 | OK\n",
-      "  ✓ Trial 18 | 66 filas | 1 NaN | 6 tipos | max_normal=213.4 | OK\n",
-      "  ✓ Trial 19 | 74 filas | 4 NaN | 4 tipos | max_normal=36.6 | OK\n",
-      "  ✓ Trial 20 | 57 filas | 4 NaN | 5 tipos | max_normal=75.5 | OK\n",
-      "=================================================================\n",
-      "\n",
-      "=== INPUT ===\n",
-      "monto_max_normal : 305.49\n",
-      "Shape            : (59, 2)\n",
-      "NaN en monto     : 8\n",
-      "tipos_comercio   : ['Education', 'Entertainment', 'Finance', 'Health', 'Retail']\n",
-      "   tipo_comercio    monto\n",
-      "0  Entertainment   396.54\n",
-      "1         Retail   203.26\n",
-      "2  Entertainment  2219.16\n",
-      "3         Retail  4210.99\n",
-      "4  Entertainment   297.60\n",
-      "5      Education  1064.89\n",
-      "6         Retail      NaN\n",
-      "7        Finance      NaN\n",
-      "\n",
-      "=== OUTPUT ESPERADO ===\n",
-      "X shape: (59, 2)  |  y shape: (59,)\n",
-      "X (primeras 8 filas):\n",
-      "[[ 1.         -0.13136484]\n",
-      " [ 4.         -0.43526879]\n",
-      " [ 1.          2.73443306]\n",
-      " [ 4.          5.86628843]\n",
-      " [ 1.         -0.28693322]\n",
-      " [ 0.          0.91951578]\n",
-      " [ 4.         -0.30693352]\n",
-      " [ 2.         -0.30693352]]\n",
-      "y (primeros 8 valores): [1 0 1 1 0 1 0 0]\n",
-      "\n",
-      "X dtypes — tipo_comercio (int-like): float64  |  monto (float): float64\n",
-      "Proporción sospechosos: 39.0%\n"
-     ]
-    }
-   ],
-   "source": [
-    "import pandas as pd\n",
-    "import numpy as np\n",
-    "from sklearn.preprocessing import LabelEncoder, StandardScaler\n",
-    "from sklearn.impute import SimpleImputer\n",
-    "import random\n",
-    "\n",
-    "\n",
-    "# ── Implementación de referencia (ground truth) ───────────────────────────────\n",
-    "\n",
-    "def _reference_preparar_deteccion_fraude(df_transacciones, monto_max_normal):\n",
-    "    df = df_transacciones.copy()\n",
-    "\n",
-    "    # 1. Imputar NaN en 'monto' con la mediana\n",
-    "    imputer = SimpleImputer(strategy='median')\n",
-    "    df['monto'] = imputer.fit_transform(df[['monto']]).ravel()\n",
-    "\n",
-    "    # 2. Etiqueta ANTES de escalar (usa monto imputado, no escalado)\n",
-    "    df['sospechoso'] = (df['monto'] > monto_max_normal).astype(int)\n",
-    "\n",
-    "    # 3. Codificar 'tipo_comercio' con LabelEncoder\n",
-    "    le = LabelEncoder()\n",
-    "    df['tipo_comercio'] = le.fit_transform(df['tipo_comercio'])\n",
-    "\n",
-    "    # 4. Escalar 'monto' con StandardScaler\n",
-    "    scaler = StandardScaler()\n",
-    "    df['monto'] = scaler.fit_transform(df[['monto']]).ravel()\n",
-    "\n",
-    "    # 5. Salida: X con tipo_comercio y monto; y con sospechoso\n",
-    "    X = df[['tipo_comercio', 'monto']].to_numpy()\n",
-    "    y = df['sospechoso'].to_numpy()\n",
-    "\n",
-    "    return X, y\n",
-    "\n",
-    "\n",
-    "# ── Generador principal ───────────────────────────────────────────────────────\n",
-    "\n",
-    "def generar_caso_de_uso_preparar_deteccion_fraude():\n",
-    "    \"\"\"\n",
-    "    Genera un caso de uso aleatorio para la función preparar_deteccion_fraude.\n",
-    "\n",
-    "    Variaciones cubiertas:\n",
-    "    - n_rows            : 20 – 80 filas.\n",
-    "    - tipos_comercio    : subconjunto aleatorio de 3-6 categorías del pool.\n",
-    "    - monto_max_normal  : percentil aleatorio entre p30 y p75 de los montos\n",
-    "                          generados, para que la proporción de sospechosos varíe.\n",
-    "    - NaN en 'monto'    : entre 1 y 15 % de las filas tienen NaN.\n",
-    "    - Montos            : distribución log-normal (simula montos reales de transacc.)\n",
-    "    - Caso edge rango   : con prob. 0.25 se incluye al menos un monto extremo\n",
-    "                          (10× la media) para probar robustez del scaler.\n",
-    "\n",
-    "    Retorna\n",
-    "    -------\n",
-    "    input_dict : dict con claves 'df_transacciones' y 'monto_max_normal'\n",
-    "    (X_esp, y_esp) : tupla de numpy arrays (ground truth)\n",
-    "    \"\"\"\n",
-    "\n",
-    "    # ── 1. Parámetros estructurales ───────────────────────────────────────────\n",
-    "    n_rows = random.randint(20, 80)\n",
-    "\n",
-    "    pool_tipos = ['Retail', 'Food', 'Tech', 'Travel', 'Entertainment',\n",
-    "                  'Health', 'Education', 'Finance']\n",
-    "    n_tipos = random.randint(3, 6)\n",
-    "    tipos_usados = random.sample(pool_tipos, n_tipos)\n",
-    "\n",
-    "    # ── 2. Generar montos (log-normal → valores positivos con cola larga) ─────\n",
-    "    media_log = random.uniform(3.5, 6.0)          # e^3.5≈33, e^6≈403 (USD)\n",
-    "    sigma_log  = random.uniform(0.4, 1.0)\n",
-    "    montos_raw = np.random.lognormal(mean=media_log, sigma=sigma_log, size=n_rows)\n",
-    "    montos_raw = np.round(montos_raw, 2)\n",
-    "\n",
-    "    # Caso edge: monto extremo\n",
-    "    if random.random() < 0.25:\n",
-    "        idx_extremo = random.randint(0, n_rows - 1)\n",
-    "        montos_raw[idx_extremo] = round(montos_raw.mean() * 10, 2)\n",
-    "\n",
-    "    # ── 3. Inyectar NaN en 'monto' ────────────────────────────────────────────\n",
-    "    nan_rate = random.uniform(0.01, 0.15)\n",
-    "    n_nans   = max(1, int(n_rows * nan_rate))\n",
-    "    nan_idx  = random.sample(range(n_rows), n_nans)\n",
-    "    montos_con_nan = montos_raw.astype(float).copy()\n",
-    "    montos_con_nan[nan_idx] = np.nan\n",
-    "\n",
-    "    # ── 4. monto_max_normal: percentil aleatorio entre p30 y p75 ─────────────\n",
-    "    # Se calcula sobre los montos sin NaN para ser determinista\n",
-    "    montos_validos = montos_raw  # sin NaN (original)\n",
-    "    percentil = random.uniform(30, 75)\n",
-    "    monto_max_normal = round(float(np.percentile(montos_validos, percentil)), 2)\n",
-    "\n",
-    "    # ── 5. Construir DataFrame ────────────────────────────────────────────────\n",
-    "    df = pd.DataFrame({\n",
-    "        'tipo_comercio': np.random.choice(tipos_usados, n_rows),\n",
-    "        'monto':         montos_con_nan,\n",
-    "    })\n",
-    "\n",
-    "    # ── 6. Calcular ground truth ──────────────────────────────────────────────\n",
-    "    input_dict = {\n",
-    "        'df_transacciones': df.copy(),\n",
-    "        'monto_max_normal':  monto_max_normal,\n",
-    "    }\n",
-    "    X_esp, y_esp = _reference_preparar_deteccion_fraude(df.copy(), monto_max_normal)\n",
-    "\n",
-    "    return input_dict, (X_esp, y_esp)\n",
-    "\n",
-    "\n",
-    "# ── Suite de validación ───────────────────────────────────────────────────────\n",
-    "\n",
-    "def validar_solucion(func, n_trials=20, seed=None):\n",
-    "    \"\"\"\n",
-    "    Ejecuta n_trials casos aleatorios contra la función del estudiante.\n",
-    "\n",
-    "    Verificaciones por trial:\n",
-    "    1. Retorna una tupla de longitud 2.\n",
-    "    2. Ambos elementos son numpy.ndarray.\n",
-    "    3. X tiene shape (n, 2); y tiene shape (n,).\n",
-    "    4. X[:, 0] (tipo_comercio) son enteros consecutivos 0..k-1.\n",
-    "    5. X[:, 1] (monto escalado) tiene media≈0 y std≈1.\n",
-    "    6. y es binario (solo 0s y 1s).\n",
-    "    7. Valores de X e y coinciden con el ground truth (atol=1e-6).\n",
-    "    \"\"\"\n",
-    "    if seed is not None:\n",
-    "        random.seed(seed)\n",
-    "        np.random.seed(seed)\n",
-    "\n",
-    "    resultados = []\n",
-    "    for i in range(n_trials):\n",
-    "        entrada, (X_esp, y_esp) = generar_caso_de_uso_preparar_deteccion_fraude()\n",
-    "        df_in           = entrada['df_transacciones']\n",
-    "        monto_max_normal = entrada['monto_max_normal']\n",
-    "        n_nans           = df_in['monto'].isna().sum()\n",
-    "        n_tipos          = df_in['tipo_comercio'].nunique()\n",
-    "\n",
-    "        try:\n",
-    "            resultado = func(df_in.copy(), monto_max_normal)\n",
-    "            errores = []\n",
-    "\n",
-    "            # 1. Tupla de 2 elementos\n",
-    "            if not (isinstance(resultado, tuple) and len(resultado) == 2):\n",
-    "                errores.append(f\"debe retornar tupla de 2, recibió {type(resultado)}\")\n",
-    "            else:\n",
-    "                X_res, y_res = resultado\n",
-    "\n",
-    "                # 2. Tipos numpy\n",
-    "                if not isinstance(X_res, np.ndarray):\n",
-    "                    errores.append(f\"X debe ser ndarray, es {type(X_res)}\")\n",
-    "                if not isinstance(y_res, np.ndarray):\n",
-    "                    errores.append(f\"y debe ser ndarray, es {type(y_res)}\")\n",
-    "\n",
-    "                if isinstance(X_res, np.ndarray) and isinstance(y_res, np.ndarray):\n",
-    "                    n = len(df_in)\n",
-    "\n",
-    "                    # 3. Shapes\n",
-    "                    if X_res.shape != (n, 2):\n",
-    "                        errores.append(f\"X.shape={X_res.shape}, esperado ({n},2)\")\n",
-    "                    if y_res.shape != (n,):\n",
-    "                        errores.append(f\"y.shape={y_res.shape}, esperado ({n},)\")\n",
-    "\n",
-    "                    # 4. tipo_comercio: enteros 0..k-1\n",
-    "                    if X_res.shape == (n, 2):\n",
-    "                        labels = X_res[:, 0].astype(int)\n",
-    "                        esperados_labels = set(range(n_tipos))\n",
-    "                        reales_labels    = set(np.unique(labels))\n",
-    "                        if not reales_labels.issubset(esperados_labels):\n",
-    "                            errores.append(\n",
-    "                                f\"labels tipo_comercio {reales_labels} fuera de rango 0..{n_tipos-1}\"\n",
-    "                            )\n",
-    "\n",
-    "                        # 5. monto escalado: media≈0, std≈1\n",
-    "                        monto_mean = X_res[:, 1].mean()\n",
-    "                        monto_std  = X_res[:, 1].std()\n",
-    "                        if abs(monto_mean) > 1e-6:\n",
-    "                            errores.append(f\"monto media={monto_mean:.4f}, esperado≈0\")\n",
-    "                        if abs(monto_std - 1.0) > 1e-6:\n",
-    "                            errores.append(f\"monto std={monto_std:.4f}, esperado≈1\")\n",
-    "\n",
-    "                    # 6. y binario\n",
-    "                    valores_y = set(np.unique(y_res))\n",
-    "                    if not valores_y.issubset({0, 1}):\n",
-    "                        errores.append(f\"y contiene valores no binarios: {valores_y}\")\n",
-    "\n",
-    "                    # 7. Coincide con ground truth\n",
-    "                    if not errores:\n",
-    "                        if not np.allclose(X_res, X_esp, atol=1e-6):\n",
-    "                            diff = np.abs(X_res - X_esp).max()\n",
-    "                            errores.append(f\"X difiere del esperado (diff max={diff:.2e})\")\n",
-    "                        if not np.array_equal(y_res, y_esp):\n",
-    "                            errores.append(\"y difiere del esperado\")\n",
-    "\n",
-    "            passed = len(errores) == 0\n",
-    "            nota   = \"; \".join(errores) if errores else \"OK\"\n",
-    "\n",
-    "        except Exception as exc:\n",
-    "            passed = False\n",
-    "            nota   = f\"EXCEPCIÓN: {exc}\"\n",
-    "\n",
-    "        resultados.append({\n",
-    "            'trial':   i + 1,\n",
-    "            'n_rows':  len(df_in),\n",
-    "            'n_nans':  n_nans,\n",
-    "            'n_tipos': n_tipos,\n",
-    "            'monto_max': monto_max_normal,\n",
-    "            'passed':  passed,\n",
-    "            'nota':    nota,\n",
-    "        })\n",
-    "\n",
-    "    # ── Reporte ───────────────────────────────────────────────────────────────\n",
-    "    total  = len(resultados)\n",
-    "    passed = sum(r['passed'] for r in resultados)\n",
-    "    print(f\"\\n{'='*65}\")\n",
-    "    print(f\"  RESULTADOS: {passed}/{total} trials correctos\")\n",
-    "    print(f\"{'='*65}\")\n",
-    "    for r in resultados:\n",
-    "        icono = \"✓\" if r['passed'] else \"✗\"\n",
-    "        print(\n",
-    "            f\"  {icono} Trial {r['trial']:02d} | {r['n_rows']:2d} filas | \"\n",
-    "            f\"{r['n_nans']} NaN | {r['n_tipos']} tipos | \"\n",
-    "            f\"max_normal={r['monto_max']:.1f} | {r['nota']}\"\n",
-    "        )\n",
-    "    print(f\"{'='*65}\\n\")\n",
-    "    return passed == total\n",
-    "\n",
-    "\n",
-    "# ── Demo ──────────────────────────────────────────────────────────────────────\n",
-    "\n",
-    "if __name__ == \"__main__\":\n",
-    "    print(\"── Validando implementación de referencia ──\")\n",
-    "    validar_solucion(_reference_preparar_deteccion_fraude, n_trials=20, seed=42)\n",
-    "\n",
-    "    # Demo visual\n",
-    "    random.seed(5); np.random.seed(5)\n",
-    "    entrada, (X_esp, y_esp) = generar_caso_de_uso_preparar_deteccion_fraude()\n",
-    "    df_in = entrada['df_transacciones']\n",
-    "    mmax  = entrada['monto_max_normal']\n",
-    "\n",
-    "    print(\"=== INPUT ===\")\n",
-    "    print(f\"monto_max_normal : {mmax}\")\n",
-    "    print(f\"Shape            : {df_in.shape}\")\n",
-    "    print(f\"NaN en monto     : {df_in['monto'].isna().sum()}\")\n",
-    "    print(f\"tipos_comercio   : {sorted(df_in['tipo_comercio'].unique())}\")\n",
-    "    print(df_in.head(8).to_string())\n",
-    "    print(\"\\n=== OUTPUT ESPERADO ===\")\n",
-    "    print(f\"X shape: {X_esp.shape}  |  y shape: {y_esp.shape}\")\n",
-    "    print(f\"X (primeras 8 filas):\\n{X_esp[:8]}\")\n",
-    "    print(f\"y (primeros 8 valores): {y_esp[:8]}\")\n",
-    "    print(f\"\\nX dtypes — tipo_comercio (int-like): {X_esp[:,0].dtype}  |  monto (float): {X_esp[:,1].dtype}\")\n",
-    "    print(f\"Proporción sospechosos: {y_esp.mean():.1%}\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "995a3ef0-201c-4fe7-b157-09c4b814d8af",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.14.5"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+import pandas as pd
+import numpy as np
+import random
+
+
+# ── Implementación de referencia (ground truth) ───────────────────────────────
+
+def _reference_calcular_estadisticas(df):
+    medias = df.mean().to_numpy()
+    desviaciones = df.std().to_numpy()
+    return medias, desviaciones
+
+
+# ── Generador principal ───────────────────────────────────────────────────────
+
+def generar_caso_de_uso_calcular_estadisticas():
+    """
+    Genera un caso de uso aleatorio para calcular_estadisticas.
+
+    Variaciones cubiertas:
+    - n_rows      : 10 – 200 filas.
+    - n_cols      : 2 – 8 columnas numéricas.
+    - nombres     : subconjunto aleatorio del pool para evitar nombres fijos.
+    - distribución: cada columna tiene media y escala distintas (no centradas
+                    en 0) para que las medias y stds varíen entre columnas.
+    - dtypes       : mezcla aleatoria de float64 e int64 (ambos son numéricos).
+    - Caso edge columna constante: con prob. 0.2 una columna tiene todos los
+                    valores iguales → std = 0 (prueba que no hay división por 0).
+
+    Retorna
+    -------
+    input_dict : dict con clave 'df'
+    (medias, desviaciones) : tupla de numpy arrays (ground truth)
+    """
+
+    # ── 1. Parámetros estructurales ───────────────────────────────────────────
+    n_rows = random.randint(10, 200)
+    n_cols = random.randint(2, 8)
+
+    pool_nombres = [
+        'edad', 'ingreso', 'score', 'deuda', 'saldo', 'monto',
+        'frecuencia', 'dias', 'cantidad', 'ratio', 'altura', 'peso',
+    ]
+    col_names = random.sample(pool_nombres, n_cols)
+
+    # ── 2. Generar datos con medias y escalas variadas ────────────────────────
+    data = {}
+    for col in col_names:
+        media_real = random.uniform(-100, 500)
+        escala     = random.uniform(0.5, 50)
+        usar_int   = random.random() < 0.3     # 30% de columnas como int
+
+        valores = np.random.randn(n_rows) * escala + media_real
+        if usar_int:
+            valores = valores.astype(int).astype(float)  # int → float para consistencia
+        data[col] = np.round(valores, 4)
+
+    df = pd.DataFrame(data)
+
+    # ── 3. Caso edge: columna constante (std = 0) ─────────────────────────────
+    if random.random() < 0.2:
+        col_constante = random.choice(col_names)
+        valor_fijo = round(random.uniform(-50, 200), 2)
+        df[col_constante] = valor_fijo
+
+    # ── 4. Calcular ground truth ──────────────────────────────────────────────
+    input_dict = {'df': df.copy()}
+    medias, desviaciones = _reference_calcular_estadisticas(df.copy())
+
+    return input_dict, (medias, desviaciones)
+
+
+# ── Suite de validación ───────────────────────────────────────────────────────
+
+def validar_solucion(func, n_trials=20, seed=None):
+    """
+    Ejecuta n_trials casos aleatorios contra la función del estudiante.
+
+    Verificaciones por trial:
+    1. Retorna una tupla de longitud 2.
+    2. Ambos elementos son numpy.ndarray.
+    3. Ambos arrays tienen shape (n_cols,).
+    4. Los valores de medias coinciden con el ground truth (atol=1e-9).
+    5. Los valores de desviaciones coinciden con el ground truth (atol=1e-9).
+    """
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+
+    resultados = []
+    for i in range(n_trials):
+        entrada, (medias_esp, stds_esp) = generar_caso_de_uso_calcular_estadisticas()
+        df_in  = entrada['df']
+        n_cols = df_in.shape[1]
+        tiene_constante = any(df_in[c].nunique() == 1 for c in df_in.columns)
+
+        try:
+            resultado = func(df_in.copy())
+            errores = []
+
+            # 1. Tupla de 2 elementos
+            if not (isinstance(resultado, tuple) and len(resultado) == 2):
+                errores.append(f"debe retornar tupla de 2, recibió {type(resultado)}")
+            else:
+                medias_res, stds_res = resultado
+
+                # 2. Tipos numpy
+                if not isinstance(medias_res, np.ndarray):
+                    errores.append(f"medias debe ser ndarray, es {type(medias_res)}")
+                if not isinstance(stds_res, np.ndarray):
+                    errores.append(f"desviaciones debe ser ndarray, es {type(stds_res)}")
+
+                if isinstance(medias_res, np.ndarray) and isinstance(stds_res, np.ndarray):
+
+                    # 3. Shapes
+                    if medias_res.shape != (n_cols,):
+                        errores.append(f"medias.shape={medias_res.shape}, esperado ({n_cols},)")
+                    if stds_res.shape != (n_cols,):
+                        errores.append(f"desviaciones.shape={stds_res.shape}, esperado ({n_cols},)")
+
+                    # 4 & 5. Valores correctos
+                    if not errores:
+                        if not np.allclose(medias_res, medias_esp, atol=1e-9):
+                            diff = np.abs(medias_res - medias_esp).max()
+                            errores.append(f"medias incorrectas (diff max={diff:.2e})")
+                        if not np.allclose(stds_res, stds_esp, atol=1e-9):
+                            diff = np.abs(stds_res - stds_esp).max()
+                            errores.append(f"desviaciones incorrectas (diff max={diff:.2e})")
+
+            passed = len(errores) == 0
+            nota   = "; ".join(errores) if errores else "OK"
+
+        except Exception as exc:
+            passed = False
+            nota   = f"EXCEPCIÓN: {exc}"
+
+        resultados.append({
+            'trial':     i + 1,
+            'n_rows':    df_in.shape[0],
+            'n_cols':    n_cols,
+            'constante': tiene_constante,
+            'passed':    passed,
+            'nota':      nota,
+        })
+
+    # ── Reporte ───────────────────────────────────────────────────────────────
+    total  = len(resultados)
+    passed = sum(r['passed'] for r in resultados)
+    print(f"\n{'='*60}")
+    print(f"  RESULTADOS: {passed}/{total} trials correctos")
+    print(f"{'='*60}")
+    for r in resultados:
+        icono     = "✓" if r['passed'] else "✗"
+        constante = " [col_cte]" if r['constante'] else ""
+        print(
+            f"  {icono} Trial {r['trial']:02d} | {r['n_rows']:3d} filas | "
+            f"{r['n_cols']} cols{constante} | {r['nota']}"
+        )
+    print(f"{'='*60}\n")
+    return passed == total
+
+
+# ── Demo ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    print("── Validando implementación de referencia ──")
+    validar_solucion(_reference_calcular_estadisticas, n_trials=20, seed=7)
+
+    # Demo visual
+    random.seed(1); np.random.seed(1)
+    entrada, (medias, stds) = generar_caso_de_uso_calcular_estadisticas()
+    df_in = entrada['df']
+
+    print("=== INPUT ===")
+    print(f"Shape   : {df_in.shape}")
+    print(f"Columnas: {list(df_in.columns)}")
+    print(df_in.head(6).to_string())
+
+    print("\n=== OUTPUT ESPERADO ===")
+    print(f"medias       (shape {medias.shape}): {np.round(medias, 4)}")
+    print(f"desviaciones (shape {stds.shape}): {np.round(stds, 4)}")
+    print(f"\nDetalle por columna:")
+    for col, m, s in zip(df_in.columns, medias, stds):
+        print(f"  {col:<15} media={m:+10.4f}   std={s:.4f}")

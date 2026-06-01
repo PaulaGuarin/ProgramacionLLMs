@@ -1,68 +1,87 @@
 import pandas as pd
 import numpy as np
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-import random
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-def generar_caso_de_uso_deteccion_fraude():
-    """
-    Genera un caso de prueba aleatorio (input y output esperado)
-    para la función preparar_deteccion_fraude.
-    """
-    
-    # 1. Configuración aleatoria de dimensiones
-    n_rows = random.randint(10, 20)  # Entre 10 y 20 transacciones
-    
-    # 2. Generar datos aleatorios de transacciones
-    # Montos aleatorios entre 10 y 2000
-    montos = np.random.uniform(10.0, 2000.0, size=n_rows)
-    
-    # Categorías fijas para tipo de comercio
-    categorias_comercio = ["Retail", "Food", "Tech", "Travel", "Entertainment"]
-    tipos_comercio = np.random.choice(categorias_comercio, size=n_rows)
-    
-    # Crear el DataFrame inicial
-    df_transacciones = pd.DataFrame({
-        'monto': montos,
-        'tipo_comercio': tipos_comercio
-    })
-    
-    # Introducir algunos NaNs aleatorios en la columna 'monto' (aprox 15% de probabilidad)
-    mask_nan = np.random.choice([True, False], size=n_rows, p=[0.15, 0.85])
-    df_transacciones.loc[mask_nan, 'monto'] = np.nan
-    
-    # Definir un monto máximo normal aleatorio para el caso de prueba
-    monto_max_normal = float(random.randint(800, 1500))
-    
-    # ---------------------------------------------------------
-    # 3. Construir el objeto INPUT
-    # ---------------------------------------------------------
-    input_data = {
-        'df_transacciones': df_transacciones.copy(),
-        'monto_max_normal': monto_max_normal
+
+# ── Generador corregido (reemplaza el de JuanmaLop que no tiene **kwargs) ─────
+
+def generar_caso_de_uso_preparar_deteccion_fraude(**kwargs):
+    n_rows = np.random.randint(12, 18)
+    tipos = ['Retail', 'Food', 'Tech', 'Services']
+
+    data = {
+        'id_tx': range(n_rows),
+        'monto': [np.random.choice([np.nan, np.random.uniform(10, 5000)])
+                  for _ in range(n_rows)],
+        'tipo_comercio': np.random.choice(tipos, n_rows),
     }
-    
-    # ---------------------------------------------------------
-    # 4. Calcular el OUTPUT esperado (Ground Truth)
-    # ---------------------------------------------------------
-    df_expected = df_transacciones.copy()
-    
-    # A. Limpieza de montos (Imputar con la Mediana)
-    # Nota: Usamos reshape(-1, 1) porque SimpleImputer espera una matriz 2D
+
+    df_input = pd.DataFrame(data)
+    monto_max_input = float(np.random.randint(2000, 4000))
+
+    df_step = df_input.copy()
+
     imputer = SimpleImputer(strategy='median')
-    df_expected['monto'] = imputer.fit_transform(df_expected[['monto']])
-    
-    # B. Etiquetado Automático (Antes de escalar el monto)
-    # 1 si monto > monto_max_normal else 0
-    y_expected = np.where(df_expected['monto'] > monto_max_normal, 1, 0)
-    
-    # C. Codificación de 'tipo_comercio' con LabelEncoder
+    df_step['monto'] = imputer.fit_transform(df_step[['monto']])
+
+    y_target = (df_step['monto'] > monto_max_input).astype(int).values
+
     le = LabelEncoder()
-    df_expected['tipo_comercio'] = le.fit_transform(df_expected['tipo_comercio'])
-    
-    # D. Normalización de 'monto' con StandardScaler
+    df_step['tipo_comercio'] = le.fit_transform(df_step['tipo_comercio'])
+
     scaler = StandardScaler()
-    df_expected['monto'] = scaler.fit_transform(df_expected[['monto']])
-    
-    # E. Dar formato a la salida (Array con 'tipo_comercio' y 'monto', y Array de 'sospechoso')
-    # Reordenamos
+    df_step['monto'] = scaler.fit_transform(df_step[['monto']])
+
+    X_res = df_step[['tipo_comercio', 'monto']].values
+
+    input_dict = {
+        'df_transacciones': df_input,
+        'monto_max_normal':  monto_max_input,
+    }
+    return input_dict, (X_res, y_target)
+
+
+# ── Solución ──────────────────────────────────────────────────────────────────
+
+def preparar_deteccion_fraude(df_transacciones, monto_max_normal):
+    """
+    Prepara datos de transacciones para detección de fraude.
+
+    Pasos:
+    1. Imputa NaN en 'monto' con la mediana (SimpleImputer).
+    2. Etiqueta 'sospechoso': 1 si monto imputado > monto_max_normal (antes de escalar).
+    3. Codifica 'tipo_comercio' con LabelEncoder.
+    4. Escala 'monto' con StandardScaler.
+    5. Devuelve X=[tipo_comercio, monto] como ndarray e y=[sospechoso] como ndarray.
+    """
+    df = df_transacciones.copy()
+
+    # 1. Imputar NaN en 'monto' con la mediana
+    imputer = SimpleImputer(strategy='median')
+    df['monto'] = imputer.fit_transform(df[['monto']]).ravel()
+
+    # 2. Etiquetar ANTES de escalar
+    y = (df['monto'] > monto_max_normal).astype(int).values
+
+    # 3. Codificar 'tipo_comercio'
+    le = LabelEncoder()
+    df['tipo_comercio'] = le.fit_transform(df['tipo_comercio'])
+
+    # 4. Escalar 'monto'
+    scaler = StandardScaler()
+    df['monto'] = scaler.fit_transform(df[['monto']]).ravel()
+
+    # 5. X con solo tipo_comercio y monto
+    X = df[['tipo_comercio', 'monto']].values
+
+    return X, y
+
+
+if __name__ == "__main__":
+    inp, (X_esp, y_esp) = generar_caso_de_uso_preparar_deteccion_fraude()
+    X_r, y_r = preparar_deteccion_fraude(**inp)
+    ok = np.allclose(X_r, X_esp, atol=1e-9) and np.array_equal(y_r, y_esp)
+    print(f"X shape : {X_r.shape}")
+    print(f"y shape : {y_r.shape}")
+    print(f"Match   : {'✓' if ok else '✗'}")

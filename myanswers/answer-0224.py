@@ -1,69 +1,60 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.inspection import permutation_importance
-import random
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
 
 
-def generar_caso_de_uso_calcular_importancia_permutacion(**kwargs):
-    n_rows     = random.randint(80, 300)
-    n_features = random.randint(3, 8)
+def preparar_deteccion_fraude(df_transacciones, monto_max_normal):
+    """
+    Prepara los datos de transacciones para detección de fraude.
 
-    pool_nombres = ['edad', 'ingreso', 'score_credito', 'dias_cliente',
-                    'num_transacciones', 'monto_promedio', 'deuda_actual',
-                    'num_productos', 'frecuencia_login', 'dias_ultimo_pago',
-                    'saldo_promedio', 'ratio_uso']
-    feature_names = random.sample(pool_nombres, n_features)
-    target_col    = random.choice(['target', 'label', 'fraude', 'churn'])
+    Pasos:
+    1. Imputa NaN en 'monto' con la mediana (SimpleImputer).
+    2. Etiqueta 'sospechoso': 1 si monto (imputado, antes de escalar) > monto_max_normal.
+    3. Codifica 'tipo_comercio' con LabelEncoder.
+    4. Escala 'monto' con StandardScaler.
+    5. Devuelve X (tipo_comercio + monto) como ndarray e y (sospechoso) como ndarray.
+    """
+    df = df_transacciones.copy()
 
-    n_signal    = random.randint(1, min(3, n_features))
-    signal_cols = random.sample(feature_names, n_signal)
-    latent      = np.random.randn(n_rows)
-    data        = {}
-    for col in feature_names:
-        noise = np.random.randn(n_rows)
-        if col in signal_cols:
-            data[col] = np.round(latent * random.uniform(0.6, 1.5) + noise * 0.3, 4)
-        else:
-            data[col] = np.round(noise, 4)
+    # 1. Imputar NaN en 'monto' con la mediana
+    imputer = SimpleImputer(strategy='median')
+    df['monto'] = imputer.fit_transform(df[['monto']]).ravel()
 
-    pos_rate    = random.uniform(0.10, 0.20) if random.random() < 0.3 else random.uniform(0.35, 0.65)
-    signal_sum  = sum(data[c] for c in signal_cols)
-    prob        = 1 / (1 + np.exp(-signal_sum))
-    target_vals = (prob > (1 - pos_rate)).astype(int)
+    # 2. Etiquetar ANTES de escalar (monto imputado, no escalado)
+    y = (df['monto'] > monto_max_normal).astype(int).to_numpy()
 
-    if target_vals.sum() < 5:
-        target_vals[np.random.choice(np.where(target_vals == 0)[0], 5, replace=False)] = 1
-    if (1 - target_vals).sum() < 5:
-        target_vals[np.random.choice(np.where(target_vals == 1)[0], 5, replace=False)] = 0
+    # 3. Codificar 'tipo_comercio' con LabelEncoder
+    le = LabelEncoder()
+    df['tipo_comercio'] = le.fit_transform(df['tipo_comercio'])
 
-    data[target_col] = target_vals
-    df = pd.DataFrame(data)
+    # 4. Escalar 'monto' con StandardScaler
+    scaler = StandardScaler()
+    df['monto'] = scaler.fit_transform(df[['monto']]).ravel()
 
-    # Ground truth
-    X      = df.drop(columns=[target_col])
-    y      = df[target_col]
-    model  = RandomForestClassifier(random_state=42)
-    model.fit(X, y)
-    result = permutation_importance(model, X, y, random_state=42)
-    output_data = {col: imp for col, imp in zip(X.columns, result.importances_mean)}
+    # 5. Construir X con las dos columnas procesadas
+    X = df[['tipo_comercio', 'monto']].to_numpy()
 
-    input_dict = {'df': df.copy(), 'target_col': target_col}
-    return input_dict, output_data
+    return X, y
 
 
 if __name__ == "__main__":
-    entrada, esperado = generar_caso_de_uso_calcular_importancia_permutacion()
-    df_in      = entrada['df']
-    target_col = entrada['target_col']
-    feat_cols  = [c for c in df_in.columns if c != target_col]
-    print("=== INPUT ===")
-    print(f"target_col : '{target_col}'")
-    print(f"Shape      : {df_in.shape}")
-    print(f"Features   : {feat_cols}")
-    print(f"Positivos  : {df_in[target_col].mean():.1%}")
-    print(df_in.head(6).to_string())
-    print("\n=== OUTPUT ESPERADO (dict) ===")
-    for k, v in sorted(esperado.items(), key=lambda x: -x[1]):
-        bar = "█" * int(max(0, v) * 200)
-        print(f"  {k:<25} {v:+.6f}  {bar}")
+    import random
+    random.seed(42)
+    np.random.seed(42)
+
+    # Datos de prueba rápida
+    df_test = pd.DataFrame({
+        'tipo_comercio': np.random.choice(['Retail', 'Food', 'Tech', 'Travel'], 20),
+        'monto': [np.nan if i % 7 == 0 else round(np.random.lognormal(4, 1), 2)
+                  for i in range(20)],
+    })
+    monto_max = 80.0
+
+    X, y = preparar_deteccion_fraude(df_test, monto_max)
+    print(f"X shape : {X.shape}")
+    print(f"y shape : {y.shape}")
+    print(f"X dtype : {X.dtype}")
+    print(f"Sospechosos: {y.sum()} de {len(y)}")
+    print(f"X media monto (col 1) ≈ 0: {X[:, 1].mean():.4f}")
+    print(f"X std  monto (col 1) ≈ 1: {X[:, 1].std():.4f}")

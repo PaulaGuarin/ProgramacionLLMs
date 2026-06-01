@@ -1,54 +1,35 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import KFold
-import random
 
 
-def generar_caso_de_uso_aplicar_target_encoding(**kwargs):
-    n_rows = random.randint(25, 60)
-    positive_rate = random.uniform(0.2, 0.8)
+def aplicar_target_encoding(df, cat_cols, target_col):
+    """
+    Aplica Target Encoding out-of-fold (KFold k=5) a columnas categóricas.
 
-    pool_categoricas = {
-        'ciudad':    ['Bogota', 'Medellin', 'Cali', 'Barranquilla', 'Cartagena',
-                      'Bucaramanga', 'Pereira', 'Manizales'],
-        'categoria': ['A', 'B', 'C', 'D', 'E'],
-        'region':    ['Norte', 'Sur', 'Oriente', 'Occidente', 'Centro'],
-        'canal':     ['Online', 'Tienda', 'Telefono', 'App'],
-        'segmento':  ['Premium', 'Estandar', 'Basico', 'Trial'],
-    }
+    Por cada fold:
+    - Calcula la media de target_col por categoría usando solo las filas
+      del conjunto de entrenamiento (groupby + mean).
+    - Asigna esa media a cada fila del conjunto de validación.
+    - Si una categoría no aparece en entrenamiento, asigna la media global.
 
-    n_cat_cols = random.randint(1, 3)
-    cat_col_names = random.sample(list(pool_categoricas.keys()), n_cat_cols)
+    Parámetros
+    ----------
+    df         : pd.DataFrame con columnas categóricas y columna target.
+    cat_cols   : list[str] — columnas categóricas a codificar.
+    target_col : str — columna objetivo binaria (0/1).
 
-    data = {}
-    for col_name in cat_col_names:
-        valores = pool_categoricas[col_name]
-        k = random.randint(2, min(4, len(valores)))
-        data[col_name] = np.random.choice(random.sample(valores, k), n_rows)
-
-    n_num_extra = random.randint(0, 2)
-    for col_name in random.sample(['ingreso', 'edad', 'score', 'cantidad', 'dias'],
-                                  n_num_extra):
-        data[col_name] = np.round(np.random.randn(n_rows), 3)
-
-    data['target'] = (np.random.rand(n_rows) < positive_rate).astype(int)
-    df = pd.DataFrame(data)
-
-    # Caso edge: categoría rara en el último fold (30% prob)
-    if random.random() < 0.3:
-        kf_tmp = KFold(n_splits=5, shuffle=False)
-        folds = list(kf_tmp.split(df))
-        _, last_val_idx = folds[-1]
-        rare_col = cat_col_names[0]
-        df.iloc[last_val_idx[0], df.columns.get_loc(rare_col)] = '__RARO__'
-
-    # Ground truth
-    target_col = 'target'
+    Retorna
+    -------
+    pd.DataFrame con las columnas cat_cols reemplazadas por float (encodings).
+    Las demás columnas e índice permanecen sin cambios.
+    """
+    n_rows = len(df)
     df_out = df.copy()
     kf = KFold(n_splits=5, shuffle=False)
     global_mean = df[target_col].mean()
 
-    for col in cat_col_names:
+    for col in cat_cols:
         encoded = np.zeros(n_rows, dtype=float)
         for train_idx, val_idx in kf.split(df):
             train_df = df.iloc[train_idx]
@@ -58,21 +39,27 @@ def generar_caso_de_uso_aplicar_target_encoding(**kwargs):
                 encoded[i] = means.get(cat, global_mean)
         df_out[col] = encoded
 
-    input_dict = {
-        'df':         df.copy(),
-        'cat_cols':   cat_col_names,
-        'target_col': target_col,
-    }
-    return input_dict, df_out
+    return df_out
 
 
 if __name__ == "__main__":
-    entrada, salida_esperada = generar_caso_de_uso_aplicar_target_encoding()
-    print("=== INPUT ===")
-    print(f"cat_cols: {entrada['cat_cols']},  target_col: '{entrada['target_col']}'")
-    print(entrada['df'].head(8).to_string())
-    print(f"\nShape: {entrada['df'].shape}")
-    print("\n=== OUTPUT ESPERADO ===")
-    print(salida_esperada.head(8).to_string())
-    print(f"\nDtypes de columnas codificadas:")
-    print(salida_esperada[entrada['cat_cols']].dtypes)
+    import random
+    random.seed(42)
+    np.random.seed(42)
+
+    n = 30
+    df_demo = pd.DataFrame({
+        'ciudad':    np.random.choice(['Bogota', 'Medellin', 'Cali'], n),
+        'categoria': np.random.choice(['A', 'B', 'C'], n),
+        'valor':     np.round(np.random.randn(n), 3),
+        'target':    np.random.randint(0, 2, n),
+    })
+
+    resultado = aplicar_target_encoding(df_demo, ['ciudad', 'categoria'], 'target')
+    print("Input (primeras 5 filas):")
+    print(df_demo.head(5).to_string())
+    print("\nOutput (primeras 5 filas):")
+    print(resultado.head(5).to_string())
+    print(f"\nTipo columnas codificadas:")
+    print(resultado[['ciudad', 'categoria']].dtypes)
+    print(f"\nRetorna DataFrame: {isinstance(resultado, pd.DataFrame)}")
